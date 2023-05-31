@@ -5,10 +5,17 @@ import streamlit as st #pip install streamlit
 import plotly.graph_objects as go #pipt install plotly
 from streamlit_option_menu import option_menu #pip install streamlit-option-menu
 
+import database as db
+
 # Tutorial
 # Corey Yang-Smith
 # May 31 2023
 # https://www.youtube.com/watch?v=3egaMfE9388
+
+# Thing Learned
+# - streamlit options menu
+# - connecting streamlit to NoSQL database
+# - plotly sankey diagram
 
 # ---------- SETTINGS ---------- #
 # TODO Selectable currency as well
@@ -26,6 +33,12 @@ st.title(page_title + " " + page_icon)
 # --- DROP DOWN VALUES FOR SELECTING THE PERIOD ---
 years = [datetime.today().year, datetime.today().year + 1]
 months = list(calendar.month_name[1:])
+
+# --- DATABASE INTERFACE ---
+def get_all_periods():
+    items = db.fetch_all_periods()
+    periods = [item["key"] for item in items]
+    return periods
 
 # --- HIDE STREAMLIT STYLE ---
 hide_st_style = """
@@ -73,23 +86,20 @@ if selected == "Data Entry":
             period = str(st.session_state["year"]) + "_" + str(st.session_state["month"])
             incomes = {income: st.session_state[income] for income in incomes}
             expenses = {expense: st.session_state[expense] for expense in expenses} 
-            # TODO: Insert values into database
-            st.write(f"incomes: {incomes}")
-            st.write(f"expenses: {expenses}")       
+            db.insert_period(period, incomes, expenses, comment)    
             st.success("Data saved!")
 
 # ---------- PLOT PERIODS ----------
 if selected == "Data Visualization":
     st.header("Data Visualization")
     with st.form("saved_periods"):
-        # TODO: get periods from database
-        period = st.selectbox("Select Period:",["2022_March"])
+        period = st.selectbox("Select Period:", get_all_periods())
         submitted = st.form_submit_button("Plot Period")
         if submitted:
-            #TODO: Get data from database
-            comment = "Some comment"
-            incomes = {'Salary': 10, 'Other': 0}
-            expenses = {'Rent': 0, 'Utilities': 20, 'Groceries': 0, 'Car': 0, 'Other Expenses': 0, 'Savings': 0}
+            period_data = db.get_period(period)
+            incomes = period_data.get("incomes")
+            expenses = period_data.get("expenses")
+            comment = period_data.get("comment")
 
             #Create Metrics
             total_income = sum(incomes.values())
